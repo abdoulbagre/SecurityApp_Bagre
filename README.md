@@ -1,2 +1,0 @@
-# SecurityApp_Bagre
-TechSecurity
