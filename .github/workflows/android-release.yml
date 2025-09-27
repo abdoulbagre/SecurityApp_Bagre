@@ -1,0 +1,48 @@
+name: Build and Sign Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - name: Make Gradlew executable
+      run: chmod +x ./gradlew
+
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
+
+    - name: Decode Keystore
+      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > bagre-release-key.jks
+
+    - name: Sign Release APK
+      run: |
+        jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256           -keystore bagre-release-key.jks           -storepass ${{ secrets.KEYSTORE_PASSWORD }}           -keypass ${{ secrets.KEY_PASSWORD }}           app/build/outputs/apk/release/app-release-unsigned.apk           ${{ secrets.KEY_ALIAS }}
+
+    - name: Zipalign & Verify APK
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zipalign apksigner
+        zipalign -v 4 app/build/outputs/apk/release/app-release-unsigned.apk app-release-signed-aligned.apk
+        apksigner verify app-release-signed-aligned.apk
+
+    - name: Upload Signed APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: SecurityApp_Bagre-Release-Signed
+        path: app-release-signed-aligned.apk
+        if-no-files-found: error

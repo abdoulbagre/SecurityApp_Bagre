@@ -1,0 +1,2 @@
+rootProject.name = 'SecurityApp_Bagre'
+include ':app'
